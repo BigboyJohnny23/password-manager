@@ -1,0 +1,145 @@
+import os
+
+# function to get user input from the command line
+def get_input(prompt):
+    try:
+        return input(prompt)
+    except KeyboardInterrupt:
+        return None
+
+# function to save a website's credentials to a file
+def save_credentials(website, username, password, current_user):
+    with open(f"{current_user}.txt", "a") as f:
+        f.write(f"{website}:{username}:{password}\n")
+    print(f"Credentials for {website} saved successfully.")
+
+# function to retrieve a website's credentials from the file
+def get_credentials(website, current_user):
+    with open(f"{current_user}.txt", "r") as f:
+        lines = f.readlines()[1:]  # skip first line
+        for line in lines:
+            parts = line.strip().split(":")
+            if len(parts) != 3:
+                print(f"Skipping line '{line.strip()}' because it has an incorrect format.")
+                continue
+            if parts[0] == website:
+                return {"username": parts[1], "password": parts[2]}
+    return None
+
+# function to delete a website's credentials from the file
+def delete_credentials(website, current_user):
+    source_file = f"{current_user}.txt"
+    new_file = f"{current_user}_new.txt"
+
+    with open(source_file, "r") as f_src, open(new_file, "w") as f_new:
+        f_src.readline()  # Skip first line
+        for line in f_src:
+            parts = line.strip().split(":")
+            if len(parts) != 3:
+                print(f"Skipping line '{line.strip()}' because it has an incorrect format.")
+                f_new.write(line)
+            elif parts[0] == website and parts[1] == current_user:
+                print(f"Credentials deleted for {website}.")
+            elif parts[0] == website:
+                print(f"Found credentials for {website} but not owned by the user.")
+                f_new.write(line)
+            else:
+                f_new.write(line)
+
+    os.remove(source_file)
+    os.rename(new_file, source_file)
+
+# function to register a new account
+def register():
+    while True:
+        username = get_input("Enter a username (or 'b' to go back): ")
+        if username == 'b':
+            break
+        elif os.path.exists(f"{username}.txt"):
+            print("Username already exists. Please enter a different username.")
+        else:
+            password = get_input("Enter a password: ")
+            with open(f"{username}.txt", "w") as f:
+                f.write(f"{username}:{password}\n")
+            print(f"Registered successfully. Your username is {username}.")
+            return username
+    return None
+
+# function to log in to an existing account
+def login():
+    attempts = 0
+    while attempts < 3:
+        username = get_input("Enter your username (or 'b' to go back): ")
+        if username == 'b':
+            break
+        elif not os.path.exists(f"{username}.txt"):
+            print("Username not found. Please try again.")
+        else:
+            password = get_input("Enter your password: ")
+            with open(f"{username}.txt", "r") as f:
+                line = f.readline().strip()
+                _, correct_password = line.split(":")
+                if password == correct_password:
+                    print("Login successful.")
+                    return username
+            print("Incorrect password. Please try again.")
+            attempts += 1
+    return None
+
+# main program loop
+current_user = None
+while True:
+    print("\nWhat would you like to do?\n")
+    if current_user == None:
+        print("1. Register a new account")
+        print("2. Log in to an existing account")
+        print("3. Exit\n")
+    else:
+        print(f"Logged in as {current_user}")
+        print("1. Save credentials for a new website")
+        print("2. Retrieve credentials for an existing website")
+        print("3. Delete credentials for a website")
+        print("4. Log out")
+        print("5. Exit\n")
+
+    choice = get_input("Enter choice: ")
+    if choice == None:
+        # user pressed Ctrl-C, so exit the program
+        break
+
+    if current_user == None:
+        if choice == "1":
+            current_user = register()
+        elif choice == "2":
+            current_user = login()
+            if current_user == None:
+                print("Login failed. Returning to the main menu.")
+        elif choice == "3":
+            break
+        else:
+            print("Invalid choice.")
+    else:
+        if choice == "1":
+            website = get_input("Enter website name: ")
+            username = get_input("Enter username: ")
+            password = get_input("Enter password: ")
+            save_credentials(website, username, password, current_user)
+        elif choice == "2":
+            website = get_input("Enter website name: ")
+            credentials = get_credentials(website, current_user)
+            if credentials == None:
+                print("Credentials not found.")
+            else:
+                print(f"Username: {credentials['username']}")
+                print(f"Password: {credentials['password']}")
+        elif choice == "3":
+            website = get_input("Enter website name: ")
+            delete_credentials(website, current_user)
+        elif choice == "4":
+            current_user = None
+        elif choice == "5":
+            break
+        else:
+            print("Invalid choice.")
+        
+print("Goodbye!")
